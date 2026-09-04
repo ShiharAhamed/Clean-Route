@@ -3,6 +3,12 @@
 A lightweight waste collection schedule management and issue tracking system designed for Sri Lankan communities. Built for a 4-hour mini hackathon.
 
 ---
+## Live Frontend
+https://clean-route-khaki.vercel.app/
+
+## Live Backend
+https://clean-route-production.up.railway.app/
+
 
 ## 👥 Team Workload & Component Separation
 
@@ -34,7 +40,7 @@ npm install
 cp .env.example .env
 npm run dev
 ```
-*Backend runs by default at `http://localhost:5000`.*
+
 
 ### 2. Frontend Setup
 
@@ -43,7 +49,7 @@ cd frontend
 npm install
 npm run dev
 ```
-*Frontend runs by default at `http://localhost:5173`.*
+
 
 ---
 
