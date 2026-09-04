@@ -61,7 +61,7 @@ function App() {
         return <DashboardModule onNavigate={handleTabChange} />;
     }
   };
->>>>>>> bac31862511e68fec5e9d8bd36b4c3be444d186c
+
 
   return (
     <div className="app-container">
