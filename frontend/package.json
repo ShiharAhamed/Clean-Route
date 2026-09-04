@@ -1,5 +1,9 @@
 {
+<<<<<<< HEAD
   "name": "cleanroute-frontend",
+=======
+  "name": "cleanroute-lk-frontend",
+>>>>>>> bac31862511e68fec5e9d8bd36b4c3be444d186c
   "private": true,
   "version": "1.0.0",
   "type": "module",
@@ -14,6 +18,11 @@
     "react-dom": "^18.3.1"
   },
   "devDependencies": {
+<<<<<<< HEAD
+=======
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+>>>>>>> bac31862511e68fec5e9d8bd36b4c3be444d186c
     "@vitejs/plugin-react": "^4.3.1",
     "vite": "^5.3.4"
   }

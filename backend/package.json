@@ -1,4 +1,5 @@
 {
+<<<<<<< HEAD
   "name": "cleanroute-backend",
   "version": "1.0.0",
   "description": "CleanRoute LK - Express & MongoDB Backend",
@@ -8,11 +9,28 @@
     "start": "node src/server.js",
     "dev": "nodemon src/server.js"
   },
+=======
+  "name": "cleanroute-lk-backend",
+  "version": "1.0.0",
+  "description": "Backend API for CleanRoute LK waste management system",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js"
+  },
+  "keywords": ["cleanroute", "waste-management", "express", "mongodb"],
+  "author": "",
+  "license": "ISC",
+>>>>>>> bac31862511e68fec5e9d8bd36b4c3be444d186c
   "dependencies": {
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
+<<<<<<< HEAD
     "mongoose": "^8.5.1"
+=======
+    "mongoose": "^8.5.2"
+>>>>>>> bac31862511e68fec5e9d8bd36b4c3be444d186c
   },
   "devDependencies": {
     "nodemon": "^3.1.4"
