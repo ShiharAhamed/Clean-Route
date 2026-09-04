@@ -5,17 +5,26 @@ const Report = require('../models/Report');
 exports.getReports = async (req, res) => {
   try {
     const filter = {};
-    if (req.query.status) {
+    if (req.query.status && req.query.status !== 'All Statuses') {
       filter.status = req.query.status;
     }
-    if (req.query.priority) {
+    if (req.query.priority && req.query.priority !== 'All Priorities') {
       filter.priority = req.query.priority;
     }
-    if (req.query.issueType) {
+    if (req.query.issueType && req.query.issueType !== 'All Issues') {
       filter.issueType = req.query.issueType;
     }
     if (req.query.area) {
       filter.area = new RegExp(req.query.area, 'i');
+    }
+    if (req.query.search) {
+      const searchRegex = new RegExp(req.query.search, 'i');
+      filter.$or = [
+        { area: searchRegex },
+        { reporterName: searchRegex },
+        { description: searchRegex },
+        { issueType: searchRegex },
+      ];
     }
 
     const reports = await Report.find(filter).sort({ reportedAt: -1 });
@@ -39,19 +48,27 @@ exports.getReportById = async (req, res) => {
   }
 };
 
-// @desc    Create new report
+// @desc    Create new report (newly created reports strictly default to 'Pending')
 // @route   POST /api/reports
 exports.createReport = async (req, res) => {
   try {
-    const { reporterName, phone, area, issueType, description, priority, status } = req.body;
+    const { reporterName, phone, area, issueType, description, priority } = req.body;
+
+    if (!reporterName || !phone || !area || !issueType || !description) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide all required fields: reporterName, phone, area, issueType, description',
+      });
+    }
+
     const report = await Report.create({
-      reporterName,
-      phone,
-      area,
-      issueType,
-      description,
+      reporterName: reporterName.trim(),
+      phone: phone.trim(),
+      area: area.trim(),
+      issueType: issueType.trim(),
+      description: description.trim(),
       priority: priority || 'Medium',
-      status: status || 'Pending',
+      status: 'Pending', // A newly created report must default to Pending
     });
     res.status(201).json({ success: true, data: report });
   } catch (error) {

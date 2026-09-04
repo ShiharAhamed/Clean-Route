@@ -1,8 +1,8 @@
 import api from './api';
 
 export const scheduleService = {
-  // GET /api/schedules (with optional params: { search, areaName, collectionDay, wasteType, status })
-  getSchedules: async (params = {}) => {
+  // GET /api/schedules
+  getSchedules: async (params) => {
     const response = await api.get('/schedules', { params });
     return response.data;
   },

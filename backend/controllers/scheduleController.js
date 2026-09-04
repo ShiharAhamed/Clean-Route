@@ -1,32 +1,21 @@
 const Schedule = require('../models/Schedule');
 
-// @desc    Get all schedules (with optional search and filters)
+// @desc    Get all schedules (with optional query filter support)
 // @route   GET /api/schedules
 exports.getSchedules = async (req, res) => {
   try {
-    const { search, areaName, collectionDay, wasteType, status } = req.query;
     const filter = {};
-
-    // Search by area name (regex case-insensitive)
-    if (search) {
-      filter.areaName = { $regex: search, $options: 'i' };
-    } else if (areaName) {
-      filter.areaName = { $regex: areaName, $options: 'i' };
+    if (req.query.collectionDay && req.query.collectionDay !== 'All Days') {
+      filter.collectionDay = req.query.collectionDay;
     }
-
-    // Filter by specific day
-    if (collectionDay && collectionDay !== 'All') {
-      filter.collectionDay = collectionDay;
+    if (req.query.wasteType && req.query.wasteType !== 'All Types') {
+      filter.wasteType = req.query.wasteType;
     }
-
-    // Filter by waste type
-    if (wasteType && wasteType !== 'All') {
-      filter.wasteType = wasteType;
+    if (req.query.status && req.query.status !== 'All Statuses') {
+      filter.status = req.query.status;
     }
-
-    // Filter by status
-    if (status && status !== 'All') {
-      filter.status = status;
+    if (req.query.areaName) {
+      filter.areaName = { $regex: req.query.areaName, $options: 'i' };
     }
 
     const schedules = await Schedule.find(filter).sort({ createdAt: -1 });
@@ -56,11 +45,10 @@ exports.createSchedule = async (req, res) => {
   try {
     const { areaName, collectionDay, collectionTime, wasteType, status } = req.body;
 
-    // Validation
     if (!areaName || !collectionDay || !collectionTime || !wasteType) {
       return res.status(400).json({
         success: false,
-        message: 'Please provide areaName, collectionDay, collectionTime, and wasteType',
+        message: 'Please provide all required fields: areaName, collectionDay, collectionTime, wasteType',
       });
     }
 

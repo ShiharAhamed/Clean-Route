@@ -19,6 +19,7 @@ app.use(express.json());
 app.use('/api/schedules', require('./routes/scheduleRoutes'));
 app.use('/api/reports', require('./routes/reportRoutes'));
 app.use('/api/stats', require('./routes/statsRoutes'));
+app.use('/api/tasks', require('./routes/taskRoutes'));
 
 // Root Health Check Route
 app.get('/', (req, res) => {
@@ -32,6 +33,7 @@ app.use((req, res) => {
 
 const PORT = process.env.PORT || 5000;
 
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`CleanRoute LK Server running on port ${PORT}`);
 });
+

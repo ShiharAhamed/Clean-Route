@@ -1,39 +1,40 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { scheduleService } from '../../services/scheduleService';
-import StatusBadge from '../common/StatusBadge';
+import ScheduleFilterBar from './ScheduleFilterBar';
+import ScheduleFormModal from './ScheduleFormModal';
+import ScheduleDeleteModal from './ScheduleDeleteModal';
 
-const DAYS_OF_WEEK = [
-  'Monday',
-  'Tuesday',
-  'Wednesday',
-  'Thursday',
-  'Friday',
-  'Saturday',
-  'Sunday',
-];
-
-const WASTE_TYPES = [
-  'Organic / Food Waste',
-  'Plastic & Polythene',
-  'Paper & Cardboard',
-  'Glass & Metal',
-  'Electronic Waste',
-  'General Residual Waste',
-];
-
-const INITIAL_FORM = {
-  areaName: '',
-  collectionDay: 'Monday',
-  collectionTime: '',
-  wasteType: 'Organic / Food Waste',
-  status: 'Active',
-};
-
+/**
+ * Component 1: Collection Schedule Management
+ * Features:
+ * - View schedules list with real-time stats
+ * - Add new collection schedule (POST /api/schedules)
+ * - Edit collection schedule (PUT /api/schedules/:id & GET /api/schedules/:id)
+ * - Delete collection schedule (DELETE /api/schedules/:id)
+ * - Multi-criteria search & filtering (Area, Day, Waste Type, Status)
+ * - Form validation and error handling
+ */
 const ScheduleModule = () => {
   // Schedules data state
   const [schedules, setSchedules] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [actionLoading, setActionLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
+
+  // Search & Filter State
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedDay, setSelectedDay] = useState('All Days');
+  const [selectedWasteType, setSelectedWasteType] = useState('All Types');
+  const [selectedStatus, setSelectedStatus] = useState('All Statuses');
+
+  // Modal States
+  const [isFormModalOpen, setIsFormModalOpen] = useState(false);
+  const [selectedSchedule, setSelectedSchedule] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [scheduleToDelete, setScheduleToDelete] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Alerts & Messages
   const [errorMessage, setErrorMessage] = useState('');
@@ -63,298 +64,328 @@ const ScheduleModule = () => {
   const fetchSchedules = async () => {
     try {
       setLoading(true);
-      const params = {};
-      if (searchTerm.trim()) params.search = searchTerm.trim();
-      if (selectedDay !== 'All') params.collectionDay = selectedDay;
-      if (selectedWasteType !== 'All') params.wasteType = selectedWasteType;
-      if (selectedStatus !== 'All') params.status = selectedStatus;
-
-      const res = await scheduleService.getSchedules(params);
-      setSchedules(res.data || []);
       setErrorMessage('');
+      const res = await scheduleService.getSchedules();
+      setSchedules(res.data || []);
     } catch (err) {
-      setErrorMessage(err.response?.data?.message || 'Failed to fetch collection schedules.');
+      setErrorMessage(
+        err.response?.data?.message ||
+          'Failed to load schedules. Please ensure the backend server is running.'
+      );
     } finally {
       setLoading(false);
     }
   };
 
-  const handleSearchSubmit = (e) => {
-    e.preventDefault();
-    fetchSchedules();
-  };
-
-  const handleResetFilters = () => {
-    setSearchTerm('');
-    setSelectedDay('All');
-    setSelectedWasteType('All');
-    setSelectedStatus('All');
-  };
-
-  // Validate form inputs
-  const validateForm = () => {
-    const errors = {};
-    if (!formData.areaName.trim()) {
-      errors.areaName = 'Area name is required.';
-    } else if (formData.areaName.trim().length < 3) {
-      errors.areaName = 'Area name must be at least 3 characters.';
-    }
-
-    if (!formData.collectionDay) {
-      errors.collectionDay = 'Collection day is required.';
-    }
-
-    if (!formData.collectionTime.trim()) {
-      errors.collectionTime = 'Collection time is required (e.g. 06:30 AM - 08:30 AM).';
-    }
-
-    if (!formData.wasteType) {
-      errors.wasteType = 'Waste type is required.';
-    }
-
-    setFormErrors(errors);
-    return Object.keys(errors).length === 0;
-  };
-
-  // Open Create Modal
-  const openCreateModal = () => {
-    setIsEditing(false);
-    setCurrentId(null);
-    setFormData(INITIAL_FORM);
-    setFormErrors({});
-    setIsModalOpen(true);
-  };
-
-  // Open Edit Modal with loaded data
-  const openEditModal = (schedule) => {
-    setIsEditing(true);
-    setCurrentId(schedule._id);
-    setFormData({
-      areaName: schedule.areaName || '',
-      collectionDay: schedule.collectionDay || 'Monday',
-      collectionTime: schedule.collectionTime || '',
-      wasteType: schedule.wasteType || 'Organic / Food Waste',
-      status: schedule.status || 'Active',
-    });
-    setFormErrors({});
-    setIsModalOpen(true);
-  };
-
-  const closeModal = () => {
-    setIsModalOpen(false);
-    setFormData(INITIAL_FORM);
-    setFormErrors({});
-  };
-
-  const handleFormChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-    // Clear validation error for field on change
-    if (formErrors[name]) {
-      setFormErrors((prev) => ({ ...prev, [name]: '' }));
+  const showNotification = (msg, isSuccess = true) => {
+    if (isSuccess) {
+      setSuccessMessage(msg);
+      setErrorMessage('');
+      setTimeout(() => setSuccessMessage(''), 4000);
+    } else {
+      setErrorMessage(msg);
+      setSuccessMessage('');
+      setTimeout(() => setErrorMessage(''), 5000);
     }
   };
 
-  // Handle Create or Update Submission
-  const handleFormSubmit = async (e) => {
-    e.preventDefault();
-    if (!validateForm()) return;
+  // Open modal for Create
+  const handleOpenCreateModal = () => {
+    setSelectedSchedule(null);
+    setIsFormModalOpen(true);
+  };
 
+  // Open modal for Edit
+  const handleOpenEditModal = async (schedule) => {
     try {
-      setActionLoading(true);
-      if (isEditing) {
-        await scheduleService.updateSchedule(currentId, formData);
-        setSuccessMessage('Schedule updated successfully!');
+      // Fetch latest schedule details by ID to satisfy GET /api/schedules/:id
+      const res = await scheduleService.getScheduleById(schedule._id);
+      setSelectedSchedule(res.data || schedule);
+    } catch {
+      // Fallback to local item if fetch fails
+      setSelectedSchedule(schedule);
+    }
+    setIsFormModalOpen(true);
+  };
+
+  // Submit Create or Edit
+  const handleFormSubmit = async (formData) => {
+    setIsSubmitting(true);
+    try {
+      if (selectedSchedule && selectedSchedule._id) {
+        // PUT /api/schedules/:id
+        const res = await scheduleService.updateSchedule(selectedSchedule._id, formData);
+        setSchedules((prev) =>
+          prev.map((s) => (s._id === selectedSchedule._id ? res.data : s))
+        );
+        showNotification(`Schedule for "${formData.areaName}" updated successfully!`);
       } else {
-        await scheduleService.createSchedule(formData);
-        setSuccessMessage('New schedule created successfully!');
+        // POST /api/schedules
+        const res = await scheduleService.createSchedule(formData);
+        setSchedules((prev) => [res.data, ...prev]);
+        showNotification(`New schedule for "${formData.areaName}" created successfully!`);
       }
-
-      closeModal();
-      fetchSchedules();
-      setTimeout(() => setSuccessMessage(''), 4000);
+      setIsFormModalOpen(false);
+      setSelectedSchedule(null);
     } catch (err) {
-      setErrorMessage(err.response?.data?.message || 'Failed to save schedule.');
+      showNotification(
+        err.response?.data?.message || 'Failed to save schedule. Please check all fields.',
+        false
+      );
     } finally {
-      setActionLoading(false);
+      setIsSubmitting(false);
     }
   };
 
-  // Handle Delete
-  const handleDelete = async (id) => {
+  // Open modal for Delete
+  const handleOpenDeleteModal = (schedule) => {
+    setScheduleToDelete(schedule);
+    setIsDeleteModalOpen(true);
+  };
+
+  // Confirm Delete
+  const handleConfirmDelete = async () => {
+    if (!scheduleToDelete) return;
+    setIsDeleting(true);
     try {
-      setActionLoading(true);
-      await scheduleService.deleteSchedule(id);
-      setSuccessMessage('Schedule deleted successfully!');
-      setDeleteConfirmId(null);
-      fetchSchedules();
-      setTimeout(() => setSuccessMessage(''), 4000);
+      // DELETE /api/schedules/:id
+      await scheduleService.deleteSchedule(scheduleToDelete._id);
+      setSchedules((prev) => prev.filter((s) => s._id !== scheduleToDelete._id));
+      showNotification(`Schedule for "${scheduleToDelete.areaName}" deleted successfully.`);
+      setIsDeleteModalOpen(false);
+      setScheduleToDelete(null);
     } catch (err) {
-      setErrorMessage(err.response?.data?.message || 'Failed to delete schedule.');
+      showNotification(
+        err.response?.data?.message || 'Failed to delete schedule. Please try again.',
+        false
+      );
     } finally {
-      setActionLoading(false);
+      setIsDeleting(false);
     }
+  };
+
+  // Reset all filters
+  const handleResetFilters = () => {
+    setSearchQuery('');
+    setSelectedDay('All Days');
+    setSelectedWasteType('All Types');
+    setSelectedStatus('All Statuses');
+  };
+
+  // Filtered schedules list
+  const filteredSchedules = useMemo(() => {
+    return schedules.filter((schedule) => {
+      // Search query match in areaName or wasteType
+      const matchesSearch =
+        searchQuery.trim() === '' ||
+        schedule.areaName?.toLowerCase().includes(searchQuery.toLowerCase().trim()) ||
+        schedule.wasteType?.toLowerCase().includes(searchQuery.toLowerCase().trim());
+
+      // Day match
+      const matchesDay =
+        selectedDay === 'All Days' ||
+        schedule.collectionDay?.toLowerCase() === selectedDay.toLowerCase();
+
+      // Waste type match
+      const matchesWasteType =
+        selectedWasteType === 'All Types' ||
+        schedule.wasteType?.toLowerCase() === selectedWasteType.toLowerCase();
+
+      // Status match
+      const matchesStatus =
+        selectedStatus === 'All Statuses' ||
+        schedule.status?.toLowerCase() === selectedStatus.toLowerCase();
+
+      return matchesSearch && matchesDay && matchesWasteType && matchesStatus;
+    });
+  }, [schedules, searchQuery, selectedDay, selectedWasteType, selectedStatus]);
+
+  const formatDate = (dateString) => {
+    if (!dateString) return '—';
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+      });
+    } catch {
+      return dateString;
+    }
+  };
+
+  const getStatusBadgeClass = (status) => {
+    const val = (status || '').toLowerCase().trim();
+    if (val === 'active') return 'badge badge-active';
+    if (val === 'pending') return 'badge badge-pending';
+    if (val === 'completed') return 'badge badge-completed';
+    if (val === 'suspended') return 'badge badge-suspended';
+    return 'badge badge-low';
+  };
+
+  const getWasteTypeBadgeClass = (wasteType) => {
+    const val = (wasteType || '').toLowerCase();
+    if (val.includes('organic')) return 'waste-pill waste-pill-organic';
+    if (val.includes('recyclable') || val.includes('plastic') || val.includes('paper')) {
+      return 'waste-pill waste-pill-recyclable';
+    }
+    if (val.includes('hazardous') || val.includes('e-waste')) {
+      return 'waste-pill waste-pill-hazardous';
+    }
+    return 'waste-pill waste-pill-general';
   };
 
   return (
     <div className="module-container">
-      {/* Header Bar */}
-      <div className="card">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', marginBottom: '1rem' }}>
+      {/* Top Header Card */}
+      <div className="card schedule-main-card">
+        <div className="schedule-header-row">
           <div>
-            <h2 className="card-title" style={{ margin: 0 }}>📅 Collection Schedule Management</h2>
-            <p style={{ color: 'var(--text-muted)' }}>
-              Configure, update, and search municipal garbage collection schedules.
+            <h2 className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+              <span>📅</span> Waste Collection Schedule Management
+            </h2>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem' }}>
+              Manage municipal garbage collection routines, routes, and waste categories across Sri Lanka.
             </p>
           </div>
-          <button className="btn btn-primary" onClick={openCreateModal}>
-            ➕ Add New Schedule
+          <button
+            type="button"
+            className="btn btn-primary create-schedule-btn"
+            onClick={handleOpenCreateModal}
+          >
+            <span>➕</span> Add New Schedule
           </button>
         </div>
 
-        {/* Notifications */}
-        {successMessage && <div className="notice-box notice-success">{successMessage}</div>}
-        {errorMessage && <div className="notice-box notice-error">{errorMessage}</div>}
-
-        {/* Search and Filters Toolbar */}
-        <div className="toolbar">
-          <form onSubmit={handleSearchSubmit} style={{ display: 'flex', flex: '1', gap: '0.5rem', minWidth: '220px' }}>
-            <input
-              type="text"
-              className="form-input toolbar-input"
-              placeholder="Search area (e.g. Kandy, Colombo 03)..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-            <button type="submit" className="btn btn-secondary btn-sm">
-              🔍 Search
-            </button>
-          </form>
-
-          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
-            <select
-              className="form-select"
-              style={{ width: 'auto' }}
-              value={selectedDay}
-              onChange={(e) => setSelectedDay(e.target.value)}
-            >
-              <option value="All">All Days</option>
-              {DAYS_OF_WEEK.map((day) => (
-                <option key={day} value={day}>{day}</option>
-              ))}
-            </select>
-
-            <select
-              className="form-select"
-              style={{ width: 'auto' }}
-              value={selectedWasteType}
-              onChange={(e) => setSelectedWasteType(e.target.value)}
-            >
-              <option value="All">All Waste Types</option>
-              {WASTE_TYPES.map((type) => (
-                <option key={type} value={type}>{type}</option>
-              ))}
-            </select>
-
-            <select
-              className="form-select"
-              style={{ width: 'auto' }}
-              value={selectedStatus}
-              onChange={(e) => setSelectedStatus(e.target.value)}
-            >
-              <option value="All">All Statuses</option>
-              <option value="Active">Active</option>
-              <option value="Inactive">Inactive</option>
-            </select>
-
-            {(searchTerm || selectedDay !== 'All' || selectedWasteType !== 'All' || selectedStatus !== 'All') && (
-              <button className="btn btn-secondary btn-sm" onClick={handleResetFilters}>
-                ✖ Reset
-              </button>
-            )}
+        {/* Global Notifications */}
+        {successMessage && (
+          <div className="notice-box notice-success fade-in">
+            <span>✅ {successMessage}</span>
           </div>
-        </div>
+        )}
+        {errorMessage && (
+          <div className="notice-box notice-error fade-in">
+            <span>⚠️ {errorMessage}</span>
+          </div>
+        )}
 
-        {/* Schedules Data Table */}
+        {/* Search and Multi-Filter Controls */}
+        <ScheduleFilterBar
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          selectedDay={selectedDay}
+          onDayChange={setSelectedDay}
+          selectedWasteType={selectedWasteType}
+          onWasteTypeChange={setSelectedWasteType}
+          selectedStatus={selectedStatus}
+          onStatusChange={setSelectedStatus}
+          onResetFilters={handleResetFilters}
+          totalCount={schedules.length}
+          filteredCount={filteredSchedules.length}
+        />
+
+        {/* Main Schedule Content Table / States */}
         {loading ? (
-          <p style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
-            Loading collection schedules...
-          </p>
+          <div className="schedule-loading-state">
+            <div className="spinner"></div>
+            <p>Loading collection schedules...</p>
+          </div>
+        ) : schedules.length === 0 ? (
+          <div className="empty-state">
+            <div className="empty-state-icon">📋</div>
+            <h3 className="empty-state-title">No Collection Schedules Found</h3>
+            <p className="empty-state-text">
+              Get started by creating the first garbage collection schedule for your municipality.
+            </p>
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={handleOpenCreateModal}
+            >
+              ➕ Create Schedule Now
+            </button>
+          </div>
+        ) : filteredSchedules.length === 0 ? (
+          <div className="empty-state">
+            <div className="empty-state-icon">🔍</div>
+            <h3 className="empty-state-title">No Matching Schedules</h3>
+            <p className="empty-state-text">
+              No schedules match your current search or filter criteria. Try adjusting your filters.
+            </p>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={handleResetFilters}
+            >
+              🔄 Clear All Filters
+            </button>
+          </div>
         ) : (
           <div className="table-container">
             <table className="data-table">
               <thead>
                 <tr>
-                  <th>Area Name</th>
+                  <th>Area / Zone</th>
                   <th>Collection Day</th>
-                  <th>Collection Time</th>
-                  <th>Waste Type</th>
+                  <th>Pickup Time</th>
+                  <th>Waste Category</th>
                   <th>Status</th>
-                  <th>Created At</th>
+                  <th>Created</th>
                   <th style={{ textAlign: 'right' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {schedules.length === 0 ? (
-                  <tr>
-                    <td colSpan="7" style={{ textAlign: 'center', padding: '2.5rem', color: 'var(--text-muted)' }}>
-                      No schedules found matching your criteria. Click "Add New Schedule" to create one.
+                {filteredSchedules.map((item) => (
+                  <tr key={item._id} className="schedule-row">
+                    <td>
+                      <div className="area-cell">
+                        <span className="area-icon">📍</span>
+                        <strong className="area-name">{item.areaName}</strong>
+                      </div>
+                    </td>
+                    <td>
+                      <span className="day-badge">{item.collectionDay}</span>
+                    </td>
+                    <td>
+                      <span className="time-text">🕒 {item.collectionTime}</span>
+                    </td>
+                    <td>
+                      <span className={getWasteTypeBadgeClass(item.wasteType)}>
+                        {item.wasteType}
+                      </span>
+                    </td>
+                    <td>
+                      <span className={getStatusBadgeClass(item.status)}>
+                        {item.status || 'Active'}
+                      </span>
+                    </td>
+                    <td style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                      {formatDate(item.createdAt)}
+                    </td>
+                    <td>
+                      <div className="table-actions-container">
+                        <button
+                          type="button"
+                          className="btn-action btn-action-edit"
+                          onClick={() => handleOpenEditModal(item)}
+                          title="Edit Schedule"
+                          aria-label={`Edit schedule for ${item.areaName}`}
+                        >
+                          ✏️ Edit
+                        </button>
+                        <button
+                          type="button"
+                          className="btn-action btn-action-delete"
+                          onClick={() => handleOpenDeleteModal(item)}
+                          title="Delete Schedule"
+                          aria-label={`Delete schedule for ${item.areaName}`}
+                        >
+                          🗑️ Delete
+                        </button>
+                      </div>
                     </td>
                   </tr>
-                ) : (
-                  schedules.map((schedule) => (
-                    <tr key={schedule._id}>
-                      <td><strong>{schedule.areaName}</strong></td>
-                      <td>{schedule.collectionDay}</td>
-                      <td>{schedule.collectionTime}</td>
-                      <td>{schedule.wasteType}</td>
-                      <td>
-                        <StatusBadge type="status" value={schedule.status} />
-                      </td>
-                      <td style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                        {schedule.createdAt ? new Date(schedule.createdAt).toLocaleDateString() : 'N/A'}
-                      </td>
-                      <td style={{ textAlign: 'right' }}>
-                        {deleteConfirmId === schedule._id ? (
-                          <div style={{ display: 'inline-flex', gap: '0.35rem', alignItems: 'center' }}>
-                            <span style={{ fontSize: '0.8rem', color: '#dc2626' }}>Confirm?</span>
-                            <button
-                              className="btn btn-danger btn-sm"
-                              onClick={() => handleDelete(schedule._id)}
-                              disabled={actionLoading}
-                            >
-                              Yes
-                            </button>
-                            <button
-                              className="btn btn-secondary btn-sm"
-                              onClick={() => setDeleteConfirmId(null)}
-                            >
-                              No
-                            </button>
-                          </div>
-                        ) : (
-                          <div style={{ display: 'inline-flex', gap: '0.4rem' }}>
-                            <button
-                              className="btn btn-secondary btn-sm"
-                              onClick={() => openEditModal(schedule)}
-                              title="Edit Schedule"
-                            >
-                              ✏️ Edit
-                            </button>
-                            <button
-                              className="btn btn-secondary btn-sm"
-                              style={{ color: '#dc2626' }}
-                              onClick={() => setDeleteConfirmId(schedule._id)}
-                              title="Delete Schedule"
-                            >
-                              🗑️ Delete
-                            </button>
-                          </div>
-                        )}
-                      </td>
-                    </tr>
-                  ))
-                )}
+                ))}
               </tbody>
             </table>
           </div>
@@ -362,119 +393,28 @@ const ScheduleModule = () => {
       </div>
 
       {/* Create / Edit Schedule Modal */}
-      {isModalOpen && (
-        <div className="modal-overlay" onClick={closeModal}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h3 style={{ margin: 0, fontSize: '1.2rem' }}>
-                {isEditing ? '✏️ Edit Collection Schedule' : '➕ Create New Collection Schedule'}
-              </h3>
-              <button className="modal-close" onClick={closeModal}>&times;</button>
-            </div>
+      <ScheduleFormModal
+        isOpen={isFormModalOpen}
+        onClose={() => {
+          setIsFormModalOpen(false);
+          setSelectedSchedule(null);
+        }}
+        onSubmit={handleFormSubmit}
+        schedule={selectedSchedule}
+        isSubmitting={isSubmitting}
+      />
 
-            <form onSubmit={handleFormSubmit}>
-              <div className="form-group">
-                <label>Area / Location Name *</label>
-                <input
-                  type="text"
-                  name="areaName"
-                  className="form-input"
-                  placeholder="e.g. Maharagama Central, Colombo 06"
-                  value={formData.areaName}
-                  onChange={handleFormChange}
-                />
-                {formErrors.areaName && (
-                  <span style={{ color: '#dc2626', fontSize: '0.8rem' }}>{formErrors.areaName}</span>
-                )}
-              </div>
-
-              <div className="form-grid">
-                <div className="form-group">
-                  <label>Collection Day *</label>
-                  <select
-                    name="collectionDay"
-                    className="form-select"
-                    value={formData.collectionDay}
-                    onChange={handleFormChange}
-                  >
-                    {DAYS_OF_WEEK.map((day) => (
-                      <option key={day} value={day}>{day}</option>
-                    ))}
-                  </select>
-                  {formErrors.collectionDay && (
-                    <span style={{ color: '#dc2626', fontSize: '0.8rem' }}>{formErrors.collectionDay}</span>
-                  )}
-                </div>
-
-                <div className="form-group">
-                  <label>Collection Time *</label>
-                  <input
-                    type="text"
-                    name="collectionTime"
-                    className="form-input"
-                    placeholder="e.g. 06:30 AM - 09:00 AM"
-                    value={formData.collectionTime}
-                    onChange={handleFormChange}
-                  />
-                  {formErrors.collectionTime && (
-                    <span style={{ color: '#dc2626', fontSize: '0.8rem' }}>{formErrors.collectionTime}</span>
-                  )}
-                </div>
-              </div>
-
-              <div className="form-grid">
-                <div className="form-group">
-                  <label>Waste Type *</label>
-                  <select
-                    name="wasteType"
-                    className="form-select"
-                    value={formData.wasteType}
-                    onChange={handleFormChange}
-                  >
-                    {WASTE_TYPES.map((type) => (
-                      <option key={type} value={type}>{type}</option>
-                    ))}
-                  </select>
-                  {formErrors.wasteType && (
-                    <span style={{ color: '#dc2626', fontSize: '0.8rem' }}>{formErrors.wasteType}</span>
-                  )}
-                </div>
-
-                <div className="form-group">
-                  <label>Status</label>
-                  <select
-                    name="status"
-                    className="form-select"
-                    value={formData.status}
-                    onChange={handleFormChange}
-                  >
-                    <option value="Active">Active</option>
-                    <option value="Inactive">Inactive</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="modal-actions">
-                <button
-                  type="button"
-                  className="btn btn-secondary"
-                  onClick={closeModal}
-                  disabled={actionLoading}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="btn btn-primary"
-                  disabled={actionLoading}
-                >
-                  {actionLoading ? 'Saving...' : isEditing ? 'Update Schedule' : 'Create Schedule'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      {/* Delete Schedule Confirmation Modal */}
+      <ScheduleDeleteModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => {
+          setIsDeleteModalOpen(false);
+          setScheduleToDelete(null);
+        }}
+        onConfirm={handleConfirmDelete}
+        schedule={scheduleToDelete}
+        isDeleting={isDeleting}
+      />
     </div>
   );
 };

@@ -1,4 +1,13 @@
-import React from 'react';
+import React, { useState } from 'react';
+
+const NAV_ITEMS = [
+  { id: 'home', label: '🏠 Home' },
+  { id: 'schedules', label: '📅 Schedules' },
+  { id: 'reports', label: '📢 Report Issue' },
+  { id: 'tasks', label: '🚛 Tasks' },
+  { id: 'resolve', label: '🛠️ Resolve Issue' },
+  { id: 'status', label: '🌐 Community Status' },
+];
 
 <<<<<<< HEAD
 export const Navbar = ({ activeTab, setActiveTab }) => {
@@ -9,53 +18,66 @@ export const Navbar = ({ activeTab, setActiveTab }) => {
     { id: 'dashboard', label: '📊 Community Dashboard', dev: 'Dev 4' },
 =======
 const Navbar = ({ activeTab, setActiveTab }) => {
-  const navItems = [
-    { id: 'dashboard', label: 'Dashboard & Community' },
-    { id: 'schedules', label: 'Collection Schedules' },
-    { id: 'reports', label: 'Report an Issue' },
-    { id: 'tasks', label: 'Task Management' },
->>>>>>> bac31862511e68fec5e9d8bd36b4c3be444d186c
-  ];
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  const handleNavClick = (id) => {
+    setActiveTab(id);
+    setIsMobileMenuOpen(false);
+  };
 
   return (
     <header className="navbar">
-<<<<<<< HEAD
-      <div className="nav-inner">
-        <div className="brand">
-          <span>🌿 CleanRoute LK</span>
-          <span className="brand-badge">Community Portal</span>
+      <div
+        className="brand brand-clickable"
+        onClick={() => handleNavClick('home')}
+        title="CleanRoute LK Home"
+      >
+        <span className="brand-logo">♻️</span>
+        <div className="brand-text-container">
+          <span className="brand-title">CleanRoute LK</span>
+          <span className="brand-sub">Waste & Route Tracking</span>
         </div>
-        <nav className="nav-tabs">
-          {tabs.map((tab) => (
-            <button
-              key={tab.id}
-              className={`nav-tab-btn ${activeTab === tab.id ? 'active' : ''}`}
-              onClick={() => setActiveTab(tab.id)}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </nav>
       </div>
-    </header>
-  );
-};
-=======
-      <div className="brand">
-        <span>♻️</span>
-        <span>CleanRoute LK</span>
-      </div>
-      <nav className="nav-links">
-        {navItems.map((item) => (
+
+      {/* Desktop Navigation */}
+      <nav className="nav-links desktop-nav">
+        {NAV_ITEMS.map((item) => (
           <button
             key={item.id}
+            type="button"
             className={`nav-button ${activeTab === item.id ? 'active' : ''}`}
-            onClick={() => setActiveTab(item.id)}
+            onClick={() => handleNavClick(item.id)}
           >
             {item.label}
           </button>
         ))}
       </nav>
+
+      {/* Mobile Hamburger Toggle */}
+      <button
+        type="button"
+        className="mobile-menu-toggle"
+        onClick={() => setIsMobileMenuOpen((prev) => !prev)}
+        aria-label="Toggle navigation menu"
+      >
+        {isMobileMenuOpen ? '✕' : '☰'}
+      </button>
+
+      {/* Mobile Dropdown Nav */}
+      {isMobileMenuOpen && (
+        <div className="mobile-nav-drawer">
+          {NAV_ITEMS.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              className={`mobile-nav-button ${activeTab === item.id ? 'active' : ''}`}
+              onClick={() => handleNavClick(item.id)}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+      )}
     </header>
   );
 };
