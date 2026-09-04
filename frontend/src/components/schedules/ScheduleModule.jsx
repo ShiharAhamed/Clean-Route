@@ -36,26 +36,6 @@ const ScheduleModule = () => {
   const [scheduleToDelete, setScheduleToDelete] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // Alerts & Messages
-  const [errorMessage, setErrorMessage] = useState('');
-  const [successMessage, setSuccessMessage] = useState('');
-
-  // Search & Filter State
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedDay, setSelectedDay] = useState('All');
-  const [selectedWasteType, setSelectedWasteType] = useState('All');
-  const [selectedStatus, setSelectedStatus] = useState('All');
-
-  // Form State (Create / Edit)
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
-  const [currentId, setCurrentId] = useState(null);
-  const [formData, setFormData] = useState(INITIAL_FORM);
-  const [formErrors, setFormErrors] = useState({});
-
-  // Delete Confirmation State
-  const [deleteConfirmId, setDeleteConfirmId] = useState(null);
-
   // Fetch schedules on initial load and when filters change
   useEffect(() => {
     fetchSchedules();
