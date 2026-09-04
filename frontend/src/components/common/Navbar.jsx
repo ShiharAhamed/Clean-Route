@@ -9,14 +9,6 @@ const NAV_ITEMS = [
   { id: 'status', label: '🌐 Community Status' },
 ];
 
-<<<<<<< HEAD
-export const Navbar = ({ activeTab, setActiveTab }) => {
-  const tabs = [
-    { id: 'schedules', label: '📅 Collection Schedules', dev: 'Dev 1' },
-    { id: 'reports', label: '📢 Report an Issue', dev: 'Dev 2' },
-    { id: 'tasks', label: '📋 Task Management', dev: 'Dev 3' },
-    { id: 'dashboard', label: '📊 Community Dashboard', dev: 'Dev 4' },
-=======
 const Navbar = ({ activeTab, setActiveTab }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -35,7 +27,7 @@ const Navbar = ({ activeTab, setActiveTab }) => {
         <span className="brand-logo">♻️</span>
         <div className="brand-text-container">
           <span className="brand-title">CleanRoute LK</span>
-          <span className="brand-sub">Waste & Route Tracking</span>
+          <span className="brand-sub">Waste &amp; Route Tracking</span>
         </div>
       </div>
 
@@ -83,4 +75,3 @@ const Navbar = ({ activeTab, setActiveTab }) => {
 };
 
 export default Navbar;
->>>>>>> bac31862511e68fec5e9d8bd36b4c3be444d186c

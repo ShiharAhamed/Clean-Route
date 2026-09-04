@@ -1,20 +1,5 @@
 import React from 'react';
 
-<<<<<<< HEAD
-export const StatusBadge = ({ type = 'status', value }) => {
-  if (!value) return null;
-
-  if (type === 'priority') {
-    const priorityClass = `badge-priority-${value.toLowerCase()}`;
-    return <span className={`badge ${priorityClass}`}>{value} Priority</span>;
-  }
-
-  const normalized = value.toLowerCase().replace(/\s+/g, '-');
-  const badgeClass = `badge-${normalized}`;
-
-  return <span className={`badge ${badgeClass}`}>{value}</span>;
-};
-=======
 const StatusBadge = ({ type = 'status', value }) => {
   if (!value) return null;
 
@@ -37,4 +22,3 @@ const StatusBadge = ({ type = 'status', value }) => {
 };
 
 export default StatusBadge;
->>>>>>> bac31862511e68fec5e9d8bd36b4c3be444d186c
