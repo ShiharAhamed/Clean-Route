@@ -1,10 +1,24 @@
 const Schedule = require('../models/Schedule');
 
-// @desc    Get all schedules
+// @desc    Get all schedules (with optional query filter support)
 // @route   GET /api/schedules
 exports.getSchedules = async (req, res) => {
   try {
-    const schedules = await Schedule.find().sort({ createdAt: -1 });
+    const filter = {};
+    if (req.query.collectionDay && req.query.collectionDay !== 'All Days') {
+      filter.collectionDay = req.query.collectionDay;
+    }
+    if (req.query.wasteType && req.query.wasteType !== 'All Types') {
+      filter.wasteType = req.query.wasteType;
+    }
+    if (req.query.status && req.query.status !== 'All Statuses') {
+      filter.status = req.query.status;
+    }
+    if (req.query.areaName) {
+      filter.areaName = { $regex: req.query.areaName, $options: 'i' };
+    }
+
+    const schedules = await Schedule.find(filter).sort({ createdAt: -1 });
     res.status(200).json({ success: true, count: schedules.length, data: schedules });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -30,6 +44,14 @@ exports.getScheduleById = async (req, res) => {
 exports.createSchedule = async (req, res) => {
   try {
     const { areaName, collectionDay, collectionTime, wasteType, status } = req.body;
+
+    if (!areaName || !collectionDay || !collectionTime || !wasteType) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide all required fields: areaName, collectionDay, collectionTime, wasteType',
+      });
+    }
+
     const schedule = await Schedule.create({
       areaName,
       collectionDay,

@@ -2,8 +2,8 @@ import api from './api';
 
 export const scheduleService = {
   // GET /api/schedules
-  getSchedules: async () => {
-    const response = await api.get('/schedules');
+  getSchedules: async (params) => {
+    const response = await api.get('/schedules', { params });
     return response.data;
   },
 
